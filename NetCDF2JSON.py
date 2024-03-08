@@ -37,6 +37,13 @@ for var_name in nc.variables.keys():
     variable_info  = nc.variables[var_name]
     # print(variable_info)
     variable_attrs = {}
+    variable_attrs['name']=variable_info.name
+    variable_attrs['size'] = variable_info.size
+    variable_attrs['shape'] = variable_info.shape
+    variable_attrs['dimensions'] = variable_info.dimensions
+    # print(variable_info.dtype)
+    
+    # 读取变量属性信息
     for attr_name in variable_info.ncattrs():
         attr_value = variable_info.getncattr(attr_name)
         
@@ -50,7 +57,10 @@ for var_name in nc.variables.keys():
 
         variable_attrs[attr_name] = attr_value
 
+    # 读取变量的值
     variable_values = variable_info[:]
+    variable_attrs['datatype'] = variable_values.dtype.name
+    
     if(var_name != 'rhum'):
         if isinstance(variable_values, np.ndarray):
             variable_attrs["values"] = variable_values.tolist()
@@ -58,21 +68,16 @@ for var_name in nc.variables.keys():
             variable_attrs["values"] = variable_values.item()
     else:
         variable_data = variable_values.flatten()
-        # filled_data = variable_data.filled(variable_info.getncattr('missing_value'))
-        # filled_data = variable_data.filled(0)
-        # filename = f'{var_name}.bin'
-        # filled_data.tofile(filename)
-        mask_array = variable_data.mask
-        data_array = variable_data.data
-        data_array.tofile('data_filename.bin')
-        np.array(mask_array, dtype=int).tofile('mask_filename.bin')
-        variable_attrs["values"] = []
+        filled_data = variable_data.filled(variable_info.getncattr('missing_value'))
+        filename = f'{var_name}.bin'
+        filled_data.tofile(filename)
+        variable_attrs["values"] = filename
     variables[var_name] = variable_attrs
 
 data_dict['variables'] = variables
 
 # 保存到json
-with open('data.json','w') as fp:
-    json.dump(data_dict, fp, indent=4)
+with open('rhum2011.json','w') as fp:
+    json.dump(data_dict, fp)
     
 print('done')
