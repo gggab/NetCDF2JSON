@@ -34,10 +34,10 @@ data_dict['dimensions'] = dimensions
 # 读取变量数据
 variables = {}
 for var_name in nc.variables.keys():
-    variable_info  = nc.variables[var_name]
+    variable_info = nc.variables[var_name]
     # print(variable_info)
     variable_attrs = {}
-    variable_attrs['name']=variable_info.name
+    variable_attrs['name'] = variable_info.name
     variable_attrs['size'] = variable_info.size
     variable_attrs['shape'] = variable_info.shape
     variable_attrs['dimensions'] = variable_info.dimensions
@@ -60,7 +60,7 @@ for var_name in nc.variables.keys():
     # 读取变量的值
     variable_values = variable_info[:]
     variable_attrs['datatype'] = variable_values.dtype.name
-    
+
     if(var_name != 'rhum'):
         if isinstance(variable_values, np.ndarray):
             variable_attrs["values"] = variable_values.tolist()
