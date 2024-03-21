@@ -61,7 +61,7 @@ for var_name in nc.variables.keys():
     variable_values = variable_info[:]
     variable_attrs['datatype'] = variable_values.dtype.name
 
-    if(var_name != 'rhum'):
+    if var_name in nc.dimensions:
         if isinstance(variable_values, np.ndarray):
             variable_attrs["values"] = variable_values.tolist()
         elif isinstance(variable_values, np.generic):
