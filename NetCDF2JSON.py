@@ -1,5 +1,6 @@
 import json
 from netCDF4 import Dataset
+from datetime import datetime
 import numpy as np
 
 nc_path = './rhum.2011.nc'
@@ -8,6 +9,10 @@ nc = Dataset(nc_path)
 
 data_dict = {}
 # print(nc)
+metadata = {}
+classInfo = {}
+varInfo = {}
+classInfo['文件格式'] = nc.file_format
 data_dict['fileFormat'] = nc.file_format
 # 读取文件信息
 for i in nc.ncattrs():
@@ -15,9 +20,11 @@ for i in nc.ncattrs():
     data_dict[i] = attr
     # print(attr)
 
+dimensionLength = 0
 # 读取维度数据
 dimensions = {}
 for dim_var in nc.dimensions.keys():
+    dimensionLength += 1
     dimension_attrs = {}
     dimension_info = nc.dimensions[dim_var]
     dimension_attrs['name'] = dimension_info.name
@@ -27,10 +34,36 @@ for dim_var in nc.dimensions.keys():
     dimensions[dim_var] = dimension_attrs
     # print(dimension_info)
 
+def int_to_chinese_numeral(value):
+    digits = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九']
+    units = ['', '十', '百', '千']
+    result = ''
+    if value == 0:
+        return '零'
+    if value < 0:
+        result += '负'
+        value = -value
+    while value > 0:
+        result = digits[value % 10] + units[len(result)] + result
+        value //= 10
+    return result+'维'
+
+classInfo['栅格体元维度'] = int_to_chinese_numeral(dimensionLength)
+
 data_dict['dimensions'] = dimensions
 
 # print(nc.groups)
 
+def precision_to_chinese(precision):
+    if precision == 'float32':
+        return '单精度'
+    elif precision == 'float64':
+        return '双精度'
+    else:
+        return '未知精度'
+
+
+elements = {}
 # 读取变量数据
 variables = {}
 for var_name in nc.variables.keys():
@@ -41,6 +74,14 @@ for var_name in nc.variables.keys():
     variable_attrs['size'] = variable_info.size
     variable_attrs['shape'] = variable_info.shape
     variable_attrs['dimensions'] = variable_info.dimensions
+    units = variable_info.units
+    if units == 'degrees_north' or units == 'degree_north' or units == 'degree_N' or units == 'degrees_N' or units == 'degreeN' or units == 'degreesN':
+        classInfo['空间参考系'] = 'WGS1984_度(ID=11)'
+    if units == 'degrees_east' or units == 'degree_east' or units == 'degree_E' or units == 'degrees_E' or units == 'degreeE' or units == 'degreesE':
+        classInfo['空间参考系'] = 'WGS1984_度(ID=11)'
+
+    if hasattr(variable_info, 'axis'):
+        elements[variable_info.axis] = variable_info.size
     # print(variable_info.dtype)
     
     # 读取变量属性信息
@@ -72,12 +113,27 @@ for var_name in nc.variables.keys():
         filename = f'{var_name}.bin'
         filled_data.tofile(filename)
         variable_attrs["values"] = filename
+        varMetadata = {}
+        varMetadata['名称'] = variable_info.name
+        varMetadata['类型'] = precision_to_chinese(variable_attrs['datatype'])
+        varMetadata['最小值'] = variable_attrs['actual_range'][0]
+        varMetadata['最大值'] = variable_attrs['actual_range'][1]
+        varInfo[var_name] = varMetadata
+
     variables[var_name] = variable_attrs
 
-data_dict['variables'] = variables
+classInfo['体元个数'] = elements
 
+metadata['类属性'] = classInfo
+metadata['变量信息'] = varInfo
+nowTime = datetime.now()
+formatted_time = nowTime.strftime("%Y/%m/%d %H:%M:%S")
+metadata['创建时间'] = formatted_time
+
+data_dict['variables'] = variables
+data_dict['metadata'] = metadata
 # 保存到json
-with open('rhum2011.json','w') as fp:
-    json.dump(data_dict, fp)
-    
+with open('rhum2011.json', 'w', encoding='utf-8') as fp:
+    json.dump(data_dict, fp, ensure_ascii=False)
+
 print('done')
