@@ -1,11 +1,14 @@
 import json
+import os
 from netCDF4 import Dataset
 from datetime import datetime
 import numpy as np
 
-nc_path = './rhum.2011.nc'
-
-nc = Dataset(nc_path)
+nc_path = './rhum.2011'
+file_path = 'build'
+output_path = os.path.join(file_path, nc_path)
+os.makedirs(output_path, exist_ok=True)
+nc = Dataset(nc_path + '.nc')
 
 data_dict = {}
 # print(nc)
@@ -111,7 +114,10 @@ for var_name in nc.variables.keys():
         variable_data = variable_values.flatten()
         filled_data = variable_data.filled(variable_info.getncattr('missing_value'))
         filename = f'{var_name}.bin'
-        filled_data.tofile(filename)
+        final_path = os.path.join(output_path, filename)
+        # filename = f'0_0.m3d'
+
+        filled_data.tofile(final_path)
         variable_attrs["values"] = filename
         varMetadata = {}
         varMetadata['名称'] = variable_info.name
@@ -132,8 +138,10 @@ metadata['创建时间'] = formatted_time
 
 data_dict['variables'] = variables
 data_dict['metadata'] = metadata
+file_path = os.path.join(output_path, f'{nc_path}.json')
+nc.close()
 # 保存到json
-with open('rhum2011.json', 'w', encoding='utf-8') as fp:
+with open(file_path, 'w', encoding='utf-8') as fp:
     json.dump(data_dict, fp, ensure_ascii=False)
 
 print('done')
