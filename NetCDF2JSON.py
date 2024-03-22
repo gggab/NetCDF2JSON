@@ -37,6 +37,7 @@ for dim_var in nc.dimensions.keys():
     dimensions[dim_var] = dimension_attrs
     # print(dimension_info)
 
+
 def int_to_chinese_numeral(value):
     digits = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九']
     units = ['', '十', '百', '千']
@@ -51,11 +52,13 @@ def int_to_chinese_numeral(value):
         value //= 10
     return result+'维'
 
+
 classInfo['栅格体元维度'] = int_to_chinese_numeral(dimensionLength)
 
 data_dict['dimensions'] = dimensions
 
 # print(nc.groups)
+
 
 def precision_to_chinese(precision):
     if precision == 'float32':
@@ -86,11 +89,11 @@ for var_name in nc.variables.keys():
     if hasattr(variable_info, 'axis'):
         elements[variable_info.axis] = variable_info.size
     # print(variable_info.dtype)
-    
+
     # 读取变量属性信息
     for attr_name in variable_info.ncattrs():
         attr_value = variable_info.getncattr(attr_name)
-        
+
         # 检查属性值是否为NumPy数组，如果是，将其转换为列表
         if isinstance(attr_value, np.ndarray):
             attr_value = attr_value.tolist()
@@ -106,13 +109,22 @@ for var_name in nc.variables.keys():
     variable_attrs['datatype'] = variable_values.dtype.name
 
     if var_name in nc.dimensions:
+        # 保存数据值本身的真实范围
+        variable_attrs["variable_range"] = [
+            variable_values[0].item(), variable_values[-1].item()]
+        # 保存数据的采样间隔，用于处理经纬度要向前延伸一步。如数据范围是[0~357.5],实际范围是[0~360]
+        variable_attrs["variable_step"] = np.diff(variable_values).mean().item()
         if isinstance(variable_values, np.ndarray):
             variable_attrs["values"] = variable_values.tolist()
         elif isinstance(variable_values, np.generic):
             variable_attrs["values"] = variable_values.item()
     else:
+        # 保存属性的最大最小值做为属性值的实际范围
+        variable_attrs["variable_range"] = [
+            variable_values.min().item(), variable_values.max().item()]
         variable_data = variable_values.flatten()
-        filled_data = variable_data.filled(variable_info.getncattr('missing_value'))
+        filled_data = variable_data.filled(
+            variable_info.getncattr('missing_value'))
         filename = f'{var_name}.bin'
         final_path = os.path.join(output_path, filename)
         # filename = f'0_0.m3d'
